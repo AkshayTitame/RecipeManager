@@ -203,7 +203,7 @@ form textarea {
   color: var(--error-color);
 }
 
-.error-msg {
+.error-msg {       
   color: var(--error-color);
   font-size: 0.9rem;
   min-height: 1.2rem;
