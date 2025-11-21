@@ -255,7 +255,7 @@ function showFormErrors(errors, globalMessage) {
     globalError.textContent = globalMessage;
     globalError.classList.remove("hidden");
   }
-}
+}       
 
 function setFormMode(mode) {
   $("#formTitle").textContent = mode === "edit" ? "Edit Recipe" : "Add Recipe";

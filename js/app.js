@@ -237,7 +237,7 @@ function renderRecipeDetailUI(id) {
     <p><strong>Cook Time:</strong> ${recipe.cookTime} minutes</p>
     <p><strong>Difficulty:</strong> ${capitalize(recipe.difficulty)}</p>
   `;
-}
+}    
 
 darkModeToggle.addEventListener("click", () => {
   const currentTheme = document.documentElement.getAttribute("data-theme");

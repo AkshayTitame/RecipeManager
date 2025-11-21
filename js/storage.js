@@ -158,7 +158,7 @@ function updateRecipe(updatedRecipe) {
   }
   return false;
 }
-
+        
 function deleteRecipe(id) {
   let recipes = getRecipesFromStorage() || [];
   recipes = recipes.filter((r) => r.id !== id);
