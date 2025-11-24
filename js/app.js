@@ -1,261 +1,121 @@
-let currentEditedId = null;
 
-const searchInput = document.getElementById("searchInput");
-const difficultyFilter = document.getElementById("difficultyFilter");
-const addRecipeBtn = document.getElementById("addRecipeBtn");
-const backToHomeBtn = document.getElementById("backToHomeBtn");
-const editRecipeBtn = document.getElementById("editRecipeBtn");
-const deleteRecipeBtn = document.getElementById("deleteRecipeBtn");
-const cancelFormBtn = document.getElementById("cancelFormBtn");
-const recipeForm = document.getElementById("recipeForm");
-const formTitle = document.getElementById("formTitle");
-const darkModeToggle = document.getElementById("darkModeToggle");
 
-function getInitialRecipe() {
-  return {
-    id: "_init",
-    title: "Paneer Butter Masala",
-    description:
-      "A creamy, rich North Indian curry made with paneer, butter, tomato gravy, and aromatic spices.",
-    ingredients: [
-      "Paneer – 250g (cubed)",
-      "Butter – 2 tbsp",
-      "Oil – 1 tbsp",
-      "Onion – 2 medium (chopped)",
-      "Tomatoes – 3 (pureed)",
-      "Ginger-garlic paste – 1 tbsp",
-      "Cashews – 10 (soaked)",
-      "Cream – 3 tbsp",
-      "Red chilli powder – 1 tsp",
-      "Turmeric – 1/2 tsp",
-      "Garam masala – 1 tsp",
-      "Sugar – 1/2 tsp",
-      "Kasuri methi – 1 tsp",
-      "Salt – to taste",
-    ],
-    steps: [
-      "Heat butter and oil in a pan, add onions and sauté until golden.",
-      "Add ginger-garlic paste and cook for 1 minute.",
-      "Add tomato puree and cook until oil separates.",
-      "Blend this mixture with cashews into a smooth gravy.",
-      "Pour the gravy back into the pan and add spices.",
-      "Add paneer cubes and cook for 5 minutes.",
-      "Add cream and kasuri methi, mix gently.",
-      "Simmer for 2 minutes and serve hot.",
-    ],
-    prepTime: 20,
-    cookTime: 25,
-    difficulty: "medium",
-    imageUrl: "assets/paneer.png",
-  };
+let currentRecipes = [];
+let filteredRecipes = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSampleData();
+    loadRecipes();
+    setupEventListeners();
+    showView('home-view');
+    loadTheme();
+});
+
+function loadRecipes() {
+    currentRecipes = getRecipes();
+    filteredRecipes = [...currentRecipes];
+    renderRecipeGrid(filteredRecipes);
 }
 
-function filterAndRenderRecipes() {
-  const allRecipes = getRecipesFromStorage() || [];
-  const searchText = searchInput.value.trim().toLowerCase();
-  const difficulty = difficultyFilter.value;
+function setupEventListeners() {
+    
+    document.getElementById('home-btn').addEventListener('click', () => showView('home-view'));
+    document.getElementById('add-recipe-btn').addEventListener('click', () => showRecipeForm());
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
-  let filtered = allRecipes;
-  if (searchText) {
-    filtered = filtered.filter((r) =>
-      r.title.toLowerCase().includes(searchText)
-    );
-  }
-  if (difficulty !== "all") {
-    filtered = filtered.filter((r) => r.difficulty === difficulty);
-  }
-  renderRecipeGrid(filtered);
+    
+    document.getElementById('search-title').addEventListener('input', applyFilters);
+    document.getElementById('filter-difficulty').addEventListener('change', applyFilters);
+    document.getElementById('filter-prep-time').addEventListener('input', applyFilters);
+
+    
+    document.getElementById('edit-recipe-btn').addEventListener('click', editCurrentRecipe);
+    document.getElementById('delete-recipe-btn').addEventListener('click', deleteCurrentRecipe);
+    document.getElementById('cancel-detail-btn').addEventListener('click', () => showView('home-view'));
+
+    
+    document.getElementById('recipe-form').addEventListener('submit', handleFormSubmit);
+    document.getElementById('cancel-form-btn').addEventListener('click', () => showView('home-view'));
 }
 
-function init() {
-  initializeStorageWithSample(getInitialRecipe());
-  filterAndRenderRecipes();
-  showView(homeView);
+function applyFilters() {
+    const searchTerm = document.getElementById('search-title').value.toLowerCase();
+    const difficultyFilter = document.getElementById('filter-difficulty').value;
+    const maxPrepTime = parseInt(document.getElementById('filter-prep-time').value) || Infinity;
+
+    filteredRecipes = currentRecipes.filter(recipe => {
+        const matchesSearch = recipe.title.toLowerCase().includes(searchTerm);
+        const matchesDifficulty = !difficultyFilter || recipe.difficulty === difficultyFilter;
+        const matchesPrepTime = recipe.prepTime <= maxPrepTime;
+        return matchesSearch && matchesDifficulty && matchesPrepTime;
+    });
+
+    renderRecipeGrid(filteredRecipes);
 }
 
-addRecipeBtn.addEventListener("click", () => {
-  currentEditedId = null;
-  formTitle.textContent = "Add Recipe";
-  recipeForm.reset();
-  clearFormErrors();
-  showView(formView);
-});
-
-backToHomeBtn.addEventListener("click", () => {
-  showView(homeView);
-  filterAndRenderRecipes();
-});
-
-searchInput.addEventListener("input", () => filterAndRenderRecipes());
-difficultyFilter.addEventListener("change", () => filterAndRenderRecipes());
-
-editRecipeBtn.addEventListener("click", () => {
-  if (!currentEditedId) return;
-  const recipe = getRecipeById(currentEditedId);
-  if (!recipe) return;
-
-  formTitle.textContent = "Edit Recipe";
-  fillFormForEdit(recipe);
-  clearFormErrors();
-  showView(formView);
-});
-
-deleteRecipeBtn.addEventListener("click", () => {
-  if (!currentEditedId) return;
-  if (confirm("Are you sure you want to delete this recipe?")) {
-    deleteRecipe(currentEditedId);
-    currentEditedId = null;
-    showView(homeView);
-    filterAndRenderRecipes();
-  }
-});
-
-cancelFormBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  showView(homeView);
-  filterAndRenderRecipes();
-});
-
-recipeForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  clearFormErrors();
-
-  const title = document.getElementById("titleInput").value.trim();
-  const description = document.getElementById("descriptionInput").value.trim();
-  const ingredientsRaw = document
-    .getElementById("ingredientsInput")
-    .value.trim();
-  const stepsRaw = document.getElementById("stepsInput").value.trim();
-  const prepTime = document.getElementById("prepTimeInput").value.trim();
-  const cookTime = document.getElementById("cookTimeInput").value.trim();
-  const difficulty = document.getElementById("difficultyInput").value;
-  const imageUrl = document.getElementById("imageUrlInput").value.trim();
-
-  let hasError = false;
-
-  if (!title) {
-    setError("titleInput", "Title is required");
-    hasError = true;
-  }
-  if (!ingredientsRaw) {
-    setError("ingredientsInput", "Ingredients are required");
-    hasError = true;
-  }
-  if (!stepsRaw) {
-    setError("stepsInput", "Steps are required");
-    hasError = true;
-  }
-  if (!prepTime || isNaN(prepTime) || prepTime < 0) {
-    setError("prepTimeInput", "Valid prep time is required");
-    hasError = true;
-  }
-  if (!cookTime || isNaN(cookTime) || cookTime < 0) {
-    setError("cookTimeInput", "Valid cook time is required");
-    hasError = true;
-  }
-  if (!difficulty) {
-    setError("difficultyInput", "Difficulty is required");
-    hasError = true;
-  }
-  if (imageUrl && !isValidUrl(imageUrl)) {
-    setError("imageUrlInput", "Image URL is invalid");
-    hasError = true;
-  }
-
-  if (hasError) return;
-
-  const ingredients = ingredientsRaw
-    .split("\n")
-    .map((i) => i.trim())
-    .filter((i) => i);
-  const steps = stepsRaw
-    .split("\n")
-    .map((s) => s.trim())
-    .filter((s) => s);
-
-  const recipeData = {
-    id: currentEditedId || undefined,
-    title,
-    description,
-    ingredients,
-    steps,
-    prepTime: Number(prepTime),
-    cookTime: Number(cookTime),
-    difficulty,
-    imageUrl: imageUrl || "",
-  };
-
-  if (currentEditedId) {
-    recipeData.id = currentEditedId;
-    updateRecipe(recipeData);
-  } else {
-    addRecipe(recipeData);
-  }
-
-  currentEditedId = null;
-  showView(homeView);
-  filterAndRenderRecipes();
-});
-
-function setError(inputId, message) {
-  const input = document.getElementById(inputId);
-  const errorSpan = input.parentElement.querySelector(".error-msg");
-  if (errorSpan) errorSpan.textContent = message;
-}
-function isValidUrl(string) {
-  try {
-    new URL(string);
-    return true;
-  } catch {
-    return false;
-  }
+function editCurrentRecipe() {
+    const recipeId = document.getElementById('recipe-detail').dataset.recipeId;
+    const recipe = getRecipeById(recipeId);
+    if (recipe) {
+        showRecipeForm(recipe);
+    }
 }
 
-function renderRecipeDetail(id) {
-  currentEditedId = id;
-  const recipe = getRecipeById(id);
-  if (!recipe) return;
-  window.scrollTo(0, 0);
-  renderRecipeDetailUI(id);
-  showView(detailView);
+function deleteCurrentRecipe() {
+    const recipeId = document.getElementById('recipe-detail').dataset.recipeId;
+    if (confirm('Are you sure you want to delete this recipe?')) {
+        deleteRecipe(recipeId);
+        loadRecipes();
+        showView('home-view');
+    }
 }
 
-function renderRecipeDetailUI(id) {
-  const recipe = getRecipeById(id);
-  if (!recipe) return;
-  recipeDetail.innerHTML = `
-    <h2>${recipe.title}</h2>
-    <img src="${recipe.imageUrl || "assets/placeholder.jpg"}" alt="${
-    recipe.title
-  }" />
-    <p><strong>Description:</strong> ${recipe.description || "N/A"}</p>
-    <p><strong>Ingredients:</strong></p>
-    <ul>${recipe.ingredients.map((i) => `<li>${i}</li>`).join("")}</ul>
-    <p><strong>Steps:</strong></p>
-    <ol>${recipe.steps.map((s) => `<li>${s}</li>`).join("")}</ol>
-    <p><strong>Prep Time:</strong> ${recipe.prepTime} minutes</p>
-    <p><strong>Cook Time:</strong> ${recipe.cookTime} minutes</p>
-    <p><strong>Difficulty:</strong> ${capitalize(recipe.difficulty)}</p>
-  `;
-}    
+function handleFormSubmit(event) {
+    event.preventDefault();
+    const formData = getFormData();
 
-darkModeToggle.addEventListener("click", () => {
-  const currentTheme = document.documentElement.getAttribute("data-theme");
-  if (currentTheme === "dark") {
-    document.documentElement.removeAttribute("data-theme");
-    localStorage.setItem("theme", "light");
-  } else {
-    document.documentElement.setAttribute("data-theme", "dark");
-    localStorage.setItem("theme", "dark");
-  }
-});
+    if (!validateForm(formData)) {
+        return;
+    }
+
+    const isEdit = !!event.target.dataset.editId;
+    let result;
+
+    if (isEdit) {
+        result = updateRecipe(event.target.dataset.editId, formData);
+    } else {
+        result = addRecipe(formData);
+    }
+
+    if (result) {
+        loadRecipes();
+        showView('home-view');
+    }
+}
+
+
+function toggleTheme() {
+    const body = document.body;
+    const isDark = body.hasAttribute('data-theme');
+    if (isDark) {
+        body.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+    } else {
+        body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+    }
+}
 
 function loadTheme() {
-  const storedTheme = localStorage.getItem("theme");
-  if (storedTheme === "dark") {
-    document.documentElement.setAttribute("data-theme", "dark");
-  }
+    const theme = localStorage.getItem('theme');
+    if (theme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
+    }
 }
 
-loadTheme();
-init();
+
+const originalShowRecipeDetail = showRecipeDetail;
+showRecipeDetail = function(recipeId) {
+    originalShowRecipeDetail(recipeId);
+    document.getElementById('recipe-detail').dataset.recipeId = recipeId;
+};
