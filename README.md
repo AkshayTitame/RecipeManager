@@ -60,3 +60,6 @@ step 4: No server setup required — the project runs entirely in the browser.
 -The app works only in a browser; no offline installation (PWA) support.
 -Editing a recipe replaces all fields; partial editing is not supported.
 -No drag-and-drop reordering of ingredients or steps.
+
+# Live Demo 
+👉 https://akshaytitame.github.io/RecipeManager/
