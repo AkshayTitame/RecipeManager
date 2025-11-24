@@ -30,7 +30,7 @@ function renderRecipeGrid(recipes) {
                 </div>
             </div>
         `;
-        grid.appendChild(card);
+        grid.appendChild(card);  
     });
 }
 
